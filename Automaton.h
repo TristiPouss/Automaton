@@ -18,35 +18,15 @@ namespace fa {
   constexpr char Epsilon = '\0';
 
   class Automaton {
-  private:
-    /** Alphabet
-    * Defined by a vector (https://en.cppreference.com/w/cpp/container/vector)
-    */
-    std::set<char> al;
-
-    /** States
-    * states is the set of states
-    * initial_states is the set of initial states
-    * final_states is the set of final states
-    */
-    std::set<int> states;
-    std::set<int> initial_states;
-    std::set<int> final_states;
-
-    /** Transitions
-    * Defined by a map (https://en.cppreference.com/w/cpp/container/map), 
-    * the key is a couple of int - char and the value is a vector of int 
-    * the int is the state and the char the symbol
-    */
-    std::map<std::pair<int, char>, std::set<int>> tr;
-
   public:
     /**
      * Build an empty automaton (no state, no transition).
      */
     Automaton();
 
-    /*** MISC ***/
+    /***************************** */
+    /*            MISC             */
+    /***************************** */
 
     /* Getters */
     std::set<char> getAl() const;
@@ -72,7 +52,9 @@ namespace fa {
      */
     bool DFS(std::set<int>& visited, int s, bool return_on_final) const;
 
-    /*** END OF MISC ***/
+    /***************************** */
+    /*            MAIN             */
+    /***************************** */
 
     /**
      * Tell if an automaton is valid.
@@ -280,6 +262,27 @@ namespace fa {
 
 
   private:
+    /** Alphabet
+    * Defined by a vector (https://en.cppreference.com/w/cpp/container/vector)
+    */
+    std::set<char> al;
+
+    /** States
+    * states is the set of states
+    * initial_states is the set of initial states
+    * final_states is the set of final states
+    */
+    std::set<int> states;
+    std::set<int> initial_states;
+    std::set<int> final_states;
+
+    /** Transitions
+    * Defined by a map (https://en.cppreference.com/w/cpp/container/map), 
+    * the key is a couple of int - char and the value is a vector of int 
+    * the int is the state and the char the symbol
+    */
+    std::map<std::pair<int, char>, std::set<int>> tr;
+
   };
 
 }

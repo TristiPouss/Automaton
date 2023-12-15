@@ -21,7 +21,9 @@ namespace fa {
 
   Automaton::Automaton() {}
 
-  /*** MISC ***/
+  /***************************** */
+  /*            MISC             */
+  /***************************** */
 
   std::set<char> Automaton::getAl() const {
     return al;
@@ -84,7 +86,9 @@ namespace fa {
     setTr(other.getTr());
   }
 
-  /*** END OF MISC ***/
+  /***************************** */
+  /*            MAIN             */
+  /***************************** */
 
   bool Automaton::isValid() const {
     if(al.empty() || states.empty()){
@@ -784,7 +788,19 @@ namespace fa {
     return minimal_moore;
   }
 
-  Automaton Automaton::createMinimalBrzozowski(const Automaton& other) {return other;}
+  Automaton Automaton::createMinimalBrzozowski(const Automaton& other) {
+    assert(other.isValid());
+
+    fa::Automaton minimal_Brzozozzzozzozozzwwkswski;
+
+    minimal_Brzozozzzozzozozzwwkswski = createMirror(minimal_Brzozozzzozzozozzwwkswski);
+    minimal_Brzozozzzozzozozzwwkswski = createDeterministic(minimal_Brzozozzzozzozozzwwkswski);
+    minimal_Brzozozzzozzozozzwwkswski = createMirror(minimal_Brzozozzzozzozozzwwkswski);
+    minimal_Brzozozzzozzozozzwwkswski = createDeterministic(minimal_Brzozozzzozzozozzwwkswski);
+    minimal_Brzozozzzozzozozzwwkswski = createComplete(minimal_Brzozozzzozzozozzwwkswski);
+
+    return minimal_Brzozozzzozzozozzwwkswski;
+  }
 
 }
 
