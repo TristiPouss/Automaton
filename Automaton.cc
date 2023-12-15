@@ -398,7 +398,7 @@ namespace fa {
   }
 
   std::set<int> Automaton::readString(const std::string& word) const {
-    auto set = initial_states;
+    auto set = getInitialSt();
 
     for(auto letter : word){
       set = makeTransition(set, letter);
@@ -412,7 +412,7 @@ namespace fa {
 
     for(auto s : states){
       for(auto r : read){
-        if(s == r && s) return true;
+        if(s == r && isStateFinal(s)) return true;
       }
     }
 
@@ -511,22 +511,23 @@ namespace fa {
   }
 
   Automaton Automaton::createMirror(const Automaton& automaton) {
-    fa::Automaton mirror_automaton = fa::Automaton();
-    mirror_automaton.copy(automaton);
+    assert(automaton.isValid());
 
-    auto st = mirror_automaton.getSt();
-    for(auto it : st){
-      if(mirror_automaton.isStateFinal(it)){
-        mirror_automaton.setStateInitial(it);
-        mirror_automaton.removeFinalState(it);
-      } else if(mirror_automaton.isStateInitial(it)){
-        mirror_automaton.setStateFinal(it);
-        mirror_automaton.removeInitialState(it);
-      }
+    fa::Automaton mirror_automaton;
+    mirror_automaton.setAl(automaton.getAl());
+    mirror_automaton.setSt(automaton.getSt());
+
+    for(auto it : automaton.getFinalSt()){
+      mirror_automaton.setStateInitial(it);
+      mirror_automaton.removeFinalState(it);
     }
 
-    auto tr = mirror_automaton.getTr();
-    for(auto it_tr : tr){
+    for(auto it : automaton.getInitialSt()){
+      mirror_automaton.setStateFinal(it);
+      mirror_automaton.removeInitialState(it);
+    }
+
+    for(auto it_tr : automaton.getTr()){
       for(auto it_tr_to : it_tr.second){
         mirror_automaton.addTransition(it_tr_to, 
                                        it_tr.first.second,
@@ -693,29 +694,28 @@ namespace fa {
 
   Automaton Automaton::createMinimalMoore(const Automaton& other) {
     assert(other.isValid());
-
+    //
     fa::Automaton _other =  other;
     _other.removeNonAccessibleStates();
     _other = createComplete(_other);
     _other = createDeterministic(_other);
-
+    //
     std::vector<int> state_vector;
     for(auto st : _other.getSt()){
       // Build a vector of every states
       state_vector.push_back(st);
     }
-
+    //
     std::vector<char> al_vector;
     for(auto a : _other.getAl()){
       // Build a vector of every symbols
       al_vector.push_back(a);
     }
-
+    //
     std::vector<int> n0;
     std::map<char, std::vector<int>> nX;
     do {
       if(nX.empty()){ // First iteration
-        std::cout << "\nnX Vide\n\n";
         std::vector<int> res;
         for(auto st : state_vector){
           // Final states are marked with a 2 and non-final with a 1
@@ -723,11 +723,7 @@ namespace fa {
         }
         nX.insert({' ', res});
       }else{ // Count the different states
-        std::cout << "\nnX Pas Vide\n\n";
-        auto find = nX.find(' ');
-        if(find == nX.end()) exit(EXIT_FAILURE);
-        n0 = find->second;
-        nX = std::map<char, std::vector<int>>();
+        n0 = nX.find(' ')->second;
         //
         std::vector<int> res;
         std::map<std::vector<int>, int> tuple_map;
@@ -735,13 +731,9 @@ namespace fa {
         //
         for(auto st : state_vector){
           std::vector<int> tuple;
-          auto find = nX.find(' ');
-          if(find == nX.end()) exit(EXIT_FAILURE);
-          tuple.push_back(find->second[st]);
+          tuple.push_back(n0[st]);
           for(auto symbol : al_vector){
-            auto find = nX.find(symbol);
-            if(find == nX.end()) exit(EXIT_FAILURE);
-            tuple.push_back(find->second[st]);
+            tuple.push_back(nX.find(symbol)->second[st]);
           }
           //
           auto findKey = tuple_map.find(tuple);
@@ -754,10 +746,10 @@ namespace fa {
           }
         }
         //
+        nX = std::map<char, std::vector<int>>();
         nX.insert({' ', res});
       }
       //
-      std::cout << "\n Fin de la premiere partie \n\n";
       for(auto symbol : al_vector){
         std::vector<int> symbol_res;
         //
@@ -775,16 +767,13 @@ namespace fa {
         //
         nX.insert({symbol, symbol_res});
       }
-      std::cout << "\n Fin de boucle \n\n";
       //
     }while (n0 != nX.find(' ')->second);
-    std::cout << "Hello";
+    
     // Creation of the minimal automaton
     fa::Automaton minimal_moore;
-
     // Same Symbols
     minimal_moore.setAl(_other.getAl());
-    std::cout << "Hello";
     // States
     for(auto st : n0){
       minimal_moore.addState(st);
@@ -797,7 +786,6 @@ namespace fa {
         minimal_moore.setStateFinal(nX.find(' ')->second[st]);
       }
     }
-    std::cout << "Hello";
     // Transitions
     for(auto n : nX){
       if(n.first == ' ') continue;
@@ -805,14 +793,14 @@ namespace fa {
         minimal_moore.addTransition(n0[st], n.first, n.second[st]);
       }
     }
-    std::cout << "Hello";
+    // Return
     return minimal_moore;
   }
 
   Automaton Automaton::createMinimalBrzozowski(const Automaton& other) {
     assert(other.isValid());
 
-    fa::Automaton minimal_Brzozozzzozzozozzwwkswski;
+    fa::Automaton minimal_Brzozozzzozzozozzwwkswski = other;
 
     minimal_Brzozozzzozzozozzwwkswski = createMirror(minimal_Brzozozzzozzozozzwwkswski);
     minimal_Brzozozzzozzozozzwwkswski = createDeterministic(minimal_Brzozozzzozzozozzwwkswski);
