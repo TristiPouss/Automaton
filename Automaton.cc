@@ -3,6 +3,7 @@
 #include <array>
 #include <assert.h>
 #include <cstddef>
+#include <cstdlib>
 #include <vector>
 #include <ctype.h>
 #include <map>
@@ -212,15 +213,15 @@ namespace fa {
     assert(&from != NULL);
     assert(&to != NULL);
     assert(&alpha != NULL);
-    if(hasTransition(from, alpha, to) 
-        || (alpha != fa::Epsilon && !hasSymbol(alpha))
-        || !hasState(from)
-        || !hasState(to)){
+
+    if(hasTransition(from, alpha, to) ||
+    (alpha != fa::Epsilon && !hasSymbol(alpha)) || 
+    !hasState(from) || 
+    !hasState(to)){
       return false;
     }
 
-    std::pair<int, char> key = std::pair(from, alpha);
-    tr[key].insert(to);
+    tr[{from, alpha}].insert(to);
 
     return hasTransition(from, alpha, to);
   }
@@ -248,12 +249,17 @@ namespace fa {
     assert(&to != NULL);
     assert(&alpha != NULL);
 
-    if(hasState(from) && hasState(to) && (hasSymbol(alpha) || alpha == fa::Epsilon)){
-      for(auto it = tr.begin(); it != tr.end(); ++it){
-        auto curr = it->first;
-        if(curr.first == from && curr.second == alpha && it->second.find(to) != it->second.end()){
-          return true;
-        }
+    if((alpha != fa::Epsilon && !hasSymbol(alpha)) || 
+    !hasState(from) || 
+    !hasState(to)){
+      return false;
+    }
+
+    for(auto it : getTr()){
+      if(it.first.first == from && 
+      it.first.second == alpha && 
+      it.second.find(to) != it.second.end()){
+        return true;
       }
     }
 
@@ -262,17 +268,13 @@ namespace fa {
 
   std::size_t Automaton::countTransitions() const {
     std::size_t res = 0;
-    std::set<int>::const_iterator it_st, it_st_dest;
-    std::set<char>::const_iterator it_al;
-    for(it_st = states.begin(); it_st != states.end(); ++it_st){
-      for(it_al = al.begin(); it_al != al.end(); ++it_al){
-        for(it_st_dest = states.begin(); it_st_dest != states.end(); ++it_st_dest){
-          if(hasTransition(*it_st, *it_al, *it_st_dest)){
-            res ++;
-          }
-        }
+    for(auto from : getSt()){
+      for(auto symbol : getAl()){
+        auto findKey = tr.find(std::make_pair(from, symbol)); 
+        if(findKey != tr.end()) res += findKey->second.size();
       }
-    }
+      auto findKey = tr.find(std::make_pair(from, fa::Epsilon)); 
+        if(findKey != tr.end()) res += findKey->second.size();    }
     return res;
   }
 
@@ -418,13 +420,22 @@ namespace fa {
   }
 
   void Automaton::removeNonAccessibleStates() {
-    auto visited = std::set<int>();
+    assert(isValid());
 
-    for(auto s : initial_states){
+    if(getInitialSt().empty()){
+      std::set<int> x;
+      x.insert(0);
+      setSt(x);
+      setStateInitial(0);
+    }
+
+    std::set<int> visited;
+
+    for(auto s : getInitialSt()){
       DFS(visited, s, false);
     }
 
-    for(auto s : states){
+    for(auto s : getSt()){
       if(visited.find(s) == visited.end()){
         removeState(s);
       }
@@ -701,19 +712,22 @@ namespace fa {
     }
 
     std::vector<int> n0;
-    std::vector<std::pair<char, std::vector<int>>> nX;
-
+    std::map<char, std::vector<int>> nX;
     do {
       if(nX.empty()){ // First iteration
+        std::cout << "\nnX Vide\n\n";
         std::vector<int> res;
         for(auto st : state_vector){
           // Final states are marked with a 2 and non-final with a 1
           (_other.isStateFinal(st)) ? res.push_back(2) : res.push_back(1) ;
         }
-        nX.push_back({' ', res});
+        nX.insert({' ', res});
       }else{ // Count the different states
-        n0 = nX[' '].second;
-        nX = std::vector<std::pair<char, std::vector<int>>>();
+        std::cout << "\nnX Pas Vide\n\n";
+        auto find = nX.find(' ');
+        if(find == nX.end()) exit(EXIT_FAILURE);
+        n0 = find->second;
+        nX = std::map<char, std::vector<int>>();
         //
         std::vector<int> res;
         std::map<std::vector<int>, int> tuple_map;
@@ -721,9 +735,13 @@ namespace fa {
         //
         for(auto st : state_vector){
           std::vector<int> tuple;
-          tuple.push_back(nX[' '].second[st]);
+          auto find = nX.find(' ');
+          if(find == nX.end()) exit(EXIT_FAILURE);
+          tuple.push_back(find->second[st]);
           for(auto symbol : al_vector){
-            tuple.push_back(nX[symbol].second[st]);
+            auto find = nX.find(symbol);
+            if(find == nX.end()) exit(EXIT_FAILURE);
+            tuple.push_back(find->second[st]);
           }
           //
           auto findKey = tuple_map.find(tuple);
@@ -736,47 +754,50 @@ namespace fa {
           }
         }
         //
-        nX.push_back({' ', res});
+        nX.insert({' ', res});
       }
       //
+      std::cout << "\n Fin de la premiere partie \n\n";
       for(auto symbol : al_vector){
         std::vector<int> symbol_res;
         //
         for(auto st_from : state_vector){
           for(auto st_to : _other.getSt()){
             if(_other.hasTransition(st_from, symbol, st_to)){
-              symbol_res.push_back(nX[' '].second[st_to]);
+              auto find = nX.find(' ');
+              if(find == nX.end()) exit(EXIT_FAILURE);
+              symbol_res.push_back(find->second[st_to]);
               // can break here
               break;
             }
           }
         }
         //
-        nX.push_back({symbol, symbol_res});
+        nX.insert({symbol, symbol_res});
       }
+      std::cout << "\n Fin de boucle \n\n";
       //
-    }while (n0 != nX[0].second);
-
+    }while (n0 != nX.find(' ')->second);
+    std::cout << "Hello";
     // Creation of the minimal automaton
-
     fa::Automaton minimal_moore;
 
     // Same Symbols
     minimal_moore.setAl(_other.getAl());
-
+    std::cout << "Hello";
     // States
     for(auto st : n0){
       minimal_moore.addState(st);
     }
     for(auto st : state_vector){
       if(_other.isStateInitial(st)){
-        minimal_moore.setStateInitial(nX[' '].second[st]);
+        minimal_moore.setStateInitial(nX.find(' ')->second[st]);
       }
       if(_other.isStateFinal(st)){
-        minimal_moore.setStateFinal(nX[' '].second[st]);
+        minimal_moore.setStateFinal(nX.find(' ')->second[st]);
       }
     }
-
+    std::cout << "Hello";
     // Transitions
     for(auto n : nX){
       if(n.first == ' ') continue;
@@ -784,7 +805,7 @@ namespace fa {
         minimal_moore.addTransition(n0[st], n.first, n.second[st]);
       }
     }
-
+    std::cout << "Hello";
     return minimal_moore;
   }
 
