@@ -1,16 +1,37 @@
-#include "gtest/gtest.h"
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <vector>
 
 #include "Automaton.h"
+#include "gtest/gtest.h"
+#include "googletest/googletest/include/gtest/gtest.h"
+
+/*
+ * My functions
+ */
+
+fa::Automaton createAutomaton(int nbState, std::vector<char> symbols){
+  fa::Automaton fa;
+  for(int i = 0 ; i < nbState ; ++i){
+    EXPECT_TRUE(fa.addState(i));
+    EXPECT_TRUE(fa.hasState(i));
+  }
+  for(auto s : symbols){
+    EXPECT_TRUE(fa.addSymbol(s));
+    EXPECT_TRUE(fa.hasSymbol(s));
+  }
+  return fa;
+}
+
+/* Tests */
 
 TEST(AutomatonExampleTest, Default) {
   fa::Automaton fa;
   EXPECT_FALSE(fa.isValid());
 }
 
-// IsValid()
+// IsValid
 
 TEST(isValidTest,NoSymbol) {
   fa::Automaton fa = fa::Automaton();
@@ -31,7 +52,7 @@ TEST(isValidTest,Valid) {
   EXPECT_TRUE(fa.isValid());
 }
 
-// AddSymbol()
+// AddSymbol
 
 TEST(addSymbolTest, OneSymbol) {
   fa::Automaton fa = fa::Automaton();
@@ -66,7 +87,7 @@ TEST(addSymbolTest, AddEpsilon) {
   EXPECT_FALSE(fa.addSymbol(fa::Epsilon));
 }
 
-// RemoveSymbol()
+// RemoveSymbol
 
 TEST(removeSymbolTest, OneSymbol) {
   fa::Automaton fa = fa::Automaton();
@@ -94,7 +115,7 @@ TEST(removeSymbolTest, SymbolInTransition) {
   EXPECT_FALSE(fa.hasTransition(0, 'a', 1));
 }
 
-// HasSymbol()
+// HasSymbol
 
 TEST(hasSymbolTest, PresentSymbol) {
   fa::Automaton fa = fa::Automaton();
@@ -107,7 +128,7 @@ TEST(hasSymbolTest, NoSymbol) {
   EXPECT_FALSE(fa.hasSymbol('a')); 
 }
 
-// CountSymbol()
+// CountSymbol
 
 TEST(countSymbolsTest, NoSymbol) {
   fa::Automaton fa = fa::Automaton();
@@ -121,7 +142,7 @@ TEST(countSymbolsTest, TwoSymbols) {
   EXPECT_TRUE(fa.countSymbols() == 2); 
 }
 
-// AddState()
+// AddState
 
 TEST(addStateTest, OneState) {
   fa::Automaton fa = fa::Automaton();
@@ -147,7 +168,7 @@ TEST(addStateTest, TwoIdenticalStates) {
   EXPECT_FALSE(fa.addState(1));
 }
 
-// RemoveState()
+// RemoveState
 
 TEST(removeStateTest, OneState) {
   fa::Automaton fa = fa::Automaton();
@@ -168,8 +189,11 @@ TEST(removeStateTest, DestinatioInTransitionn) {
   fa.addState(0);
   fa.addState(1);
   fa.addTransition(0, 'a', 1);
+  EXPECT_TRUE(fa.hasTransition(0, 'a', 1));
+  EXPECT_EQ(fa.countTransitions(), 1u);
   fa.removeState(1);
   EXPECT_FALSE(fa.hasTransition(0, 'a', 1));
+  EXPECT_EQ(fa.countTransitions(), 0u);
 }
 
 TEST(removeStateTest, SourceInTransition) {
@@ -178,8 +202,11 @@ TEST(removeStateTest, SourceInTransition) {
   fa.addState(0);
   fa.addState(1);
   fa.addTransition(0, 'a', 1);
+  EXPECT_TRUE(fa.hasTransition(0, 'a', 1));
+  EXPECT_EQ(fa.countTransitions(), 1u);
   fa.removeState(0);
   EXPECT_FALSE(fa.hasTransition(0, 'a', 1));
+  EXPECT_EQ(fa.countTransitions(), 0u);
 }
 
 TEST(removeStateTest, SourceAndDestinationInTransition) {
@@ -187,11 +214,14 @@ TEST(removeStateTest, SourceAndDestinationInTransition) {
   fa.addSymbol('a');
   fa.addState(0);
   fa.addTransition(0, 'a', 0);
+  EXPECT_TRUE(fa.hasTransition(0, 'a', 0));
+  EXPECT_EQ(fa.countTransitions(), 1u);
   fa.removeState(0);
   EXPECT_FALSE(fa.hasTransition(0, 'a', 0));
+  EXPECT_EQ(fa.countTransitions(), 0u);
 }
 
-// HasState()
+// HasState
 
 TEST(hasStateTest, PresentState) {
   fa::Automaton fa = fa::Automaton();
@@ -209,7 +239,7 @@ TEST(hasStateTest, NegativeState) {
   EXPECT_FALSE(fa.hasState(-1));
 }
 
-// CountStates()
+// CountStates
 
 TEST(countStatesTest, NoState) {
   fa::Automaton fa = fa::Automaton();
@@ -223,7 +253,7 @@ TEST(countStatesTest, TwoStates) {
   EXPECT_TRUE(fa.countStates() == 2);
 }
 
-// SetInitialState() - IsStateInitial()
+// SetInitialState- IsStateInitial
 
 TEST(setStateInitialTest, OneInitialState) {
   fa::Automaton fa = fa::Automaton();
@@ -258,7 +288,7 @@ TEST(setStateInitialTest, ReadEmptyString) {
   // TODO Comprendre ce test 
 }
 
-// SetFinalState() - IsStateFinal()
+// SetFinalState - IsStateFinal
 
 TEST(setStateFinalTest, OneState) {
   fa::Automaton fa = fa::Automaton();
@@ -283,7 +313,7 @@ TEST(setStateFinalTest, NoState) {
   EXPECT_FALSE(fa.isStateFinal(0));
 }
 
-// AddTransition()
+// AddTransition
 
 TEST(addTransitionTest, OneTransition) {
   fa::Automaton fa = fa::Automaton();
@@ -371,9 +401,10 @@ TEST(addTransitionTest, EpsilonTransition) {
   fa.addState(0);
   fa.addState(1);
   EXPECT_TRUE(fa.addTransition(0, fa::Epsilon, 1));
+  EXPECT_EQ(fa.countTransitions(), 1u);
 }
 
-// RemoveTransition()
+// RemoveTransition
 
 TEST(removeTransitionTest, OneTransition) {
   fa::Automaton fa = fa::Automaton();
@@ -410,7 +441,7 @@ TEST(removeTransitionTest, NoSymbolInTransition) {
   EXPECT_FALSE(fa.removeTransition(0, 'a', 1));
 }
 
-// HasTransition()
+// HasTransition
 
 TEST(hasTransitionTest, AddTransition) {
   fa::Automaton fa = fa::Automaton();
@@ -443,7 +474,7 @@ TEST(prettyPrintTest, AnyValidAutomaton) {
   fa.prettyPrint(std::cout);
 }
 
-// HasEpsilonTransitions()
+// HasEpsilonTransitions
 
 TEST(hasEpsilonTransitionTest, HasEpsilonTransition) {
   fa::Automaton fa = fa::Automaton();
@@ -476,7 +507,7 @@ TEST(hasEpsilonTransitionTest, AddAndRemoveTransition) {
   EXPECT_FALSE(fa.hasEpsilonTransition());
 }
 
-// isDeterministic()
+// isDeterministic
 
 TEST(isDeterministicTest, Valid) {
   fa::Automaton fa = fa::Automaton();
@@ -530,7 +561,7 @@ TEST(isDeterministicTest, EpsilonTransition) {
   EXPECT_FALSE(fa.isDeterministic());
 }
 
-// isComplete()
+// isComplete
 
 TEST(isCompleteTest, Valid) {
   fa::Automaton fa = fa::Automaton();
@@ -606,6 +637,194 @@ TEST(createCompleteTest, MissingOneTransition) {
   fa.addState(2);
   fa.addTransition(2, 'a', 2);
   EXPECT_FALSE(fa.isComplete());
+}
+
+// RemoveNonAccessibleStates
+
+TEST(removeNonAccessibleStates, OneNonAccessibleState){
+  static const std::vector<char> symbols = {'a'};
+  fa::Automaton fa = createAutomaton(3, symbols);
+	
+  fa.setStateInitial(0);
+  EXPECT_TRUE(fa.addTransition(0,'a',1));
+  EXPECT_TRUE(fa.addTransition(1,'a',0));
+  EXPECT_TRUE(fa.addTransition(1,'a',1));
+
+  EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(fa.countStates(), 3u);
+
+	fa.removeNonAccessibleStates();
+
+	EXPECT_EQ(fa.countStates(), 2u);
+	EXPECT_TRUE(fa.isValid());
+}
+
+TEST(removeNonAccessibleStates,NoInitialState){
+	static const std::vector<char> symbols = {'a','b'};
+  fa::Automaton fa = createAutomaton(3, symbols);
+	
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_TRUE(fa.isLanguageEmpty());
+	EXPECT_EQ(fa.countStates(), 3u);
+
+	fa.removeNonAccessibleStates();
+
+	EXPECT_EQ(fa.countStates(), 1u);
+	EXPECT_TRUE(fa.isLanguageEmpty());
+	EXPECT_TRUE(fa.isValid());
+}
+
+TEST(removeNonAccessibleStates, noNonAccessiblesStates){
+  static const std::vector<char> symbols = {'a','b','c'};
+	fa::Automaton fa = createAutomaton(4,symbols);	
+
+	fa.setStateInitial(0);
+	EXPECT_TRUE(fa.addTransition(0,'a',1));
+	EXPECT_TRUE(fa.addTransition(1,'a',2));
+	EXPECT_TRUE(fa.addTransition(2,'a',3));
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(4u,fa.countStates());
+
+	fa.removeNonAccessibleStates();
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(4u,fa.countStates());
+
+
+}
+
+
+TEST(removeNonAccessibleStates, lastNoAccessible){
+	static const std::vector<char> symbols = {'a','b','c'};
+	fa::Automaton fa = createAutomaton(4,symbols);	
+
+	fa.setStateInitial(0);
+	EXPECT_TRUE(fa.addTransition(0,'a',1));
+	EXPECT_TRUE(fa.addTransition(1,'a',2));
+	EXPECT_TRUE(fa.addTransition(3,'a',3));
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(4u,fa.countStates());
+	EXPECT_EQ(3u,fa.countTransitions());
+
+	fa.removeNonAccessibleStates();
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_FALSE(fa.hasState(3));
+	EXPECT_EQ(3u,fa.countStates());
+	EXPECT_EQ(2u,fa.countTransitions());
+
+
+}
+
+TEST(removeNonAccessibleStates, ChainedAutomaton){
+	static const std::vector<char> symbols = {'a','b','c'};
+	fa::Automaton fa = createAutomaton(4,symbols);	
+	
+	fa.setStateInitial(0);
+	
+	EXPECT_TRUE(fa.addTransition(1,'a',1));
+	EXPECT_TRUE(fa.addTransition(1,'a',2));
+	EXPECT_TRUE(fa.addTransition(2,'a',3));
+	EXPECT_TRUE(fa.addTransition(3,'a',3));
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(4u,fa.countStates());
+	EXPECT_EQ(4u,fa.countTransitions());
+
+	fa.removeNonAccessibleStates();
+
+
+	EXPECT_TRUE(fa.isValid());
+	EXPECT_EQ(1u,fa.countStates());
+	EXPECT_EQ(0u,fa.countTransitions());
+
+}
+
+// CreateDeterministic
+
+TEST(createDeterministicTest, Deterministic){
+  std::vector<char> symbols = {'a', 'b'};
+  fa::Automaton fa = createAutomaton(3, symbols);
+
+  fa.setStateInitial(0);
+
+	EXPECT_TRUE(fa.addTransition(0,'a',1));
+	EXPECT_TRUE(fa.addTransition(0,'b',2));
+	EXPECT_TRUE(fa.addTransition(1,'a',0));
+
+  EXPECT_TRUE(fa.isDeterministic());
+
+  fa = fa.createDeterministic(fa);
+
+  EXPECT_TRUE(fa.isValid());
+  EXPECT_TRUE(fa.isDeterministic());
+}
+
+TEST(createDeterministicTest, NoInitialState){
+  std::vector<char> symbols = {'a', 'b'};
+  fa::Automaton fa = createAutomaton(3,symbols);
+
+  EXPECT_TRUE(fa.addTransition(0,'a',0));
+	EXPECT_TRUE(fa.addTransition(0,'a',1));
+	EXPECT_TRUE(fa.addTransition(0,'b',2));
+	EXPECT_TRUE(fa.addTransition(1,'a',0));
+
+  EXPECT_FALSE(fa.isDeterministic());
+
+  fa = fa.createDeterministic(fa);
+
+  EXPECT_TRUE(fa.isValid());
+  EXPECT_TRUE(fa.isDeterministic());
+}
+
+TEST(createDeterministicTest,TwoInitialStates){
+  std::vector<char> symbols = {'a', 'b'};
+  fa::Automaton fa = createAutomaton(3, symbols);
+
+  fa.setStateInitial(0);
+  fa.setStateInitial(1);
+
+  EXPECT_TRUE(fa.addTransition(0,'a',0));
+	EXPECT_TRUE(fa.addTransition(0,'a',1));
+	EXPECT_TRUE(fa.addTransition(0,'b',2));
+	EXPECT_TRUE(fa.addTransition(1,'a',0));
+
+  EXPECT_FALSE(fa.isDeterministic());
+
+  fa = fa.createDeterministic(fa);
+
+  EXPECT_TRUE(fa.isValid());
+  EXPECT_TRUE(fa.isDeterministic());
+}
+
+// MinimalMoore
+
+TEST(minimalMooreTest, CourseExample) {
+  static const std::vector<char> symbols = {'a','b'};
+	fa::Automaton fa = createAutomaton(6,symbols);	
+  fa.setStateInitial(0);
+  fa.setStateFinal(3);
+  fa.setStateFinal(4);
+  fa.addTransition(0, 'a', 1);
+  fa.addTransition(0, 'b', 2);
+  fa.addTransition(1, 'a', 2);
+  fa.addTransition(1, 'b', 3);
+  fa.addTransition(2, 'a', 1);
+  fa.addTransition(2, 'b', 4);
+  fa.addTransition(3, 'a', 4);
+  fa.addTransition(3, 'b', 5);
+  fa.addTransition(4, 'a', 3);
+  fa.addTransition(4, 'b', 5);
+  fa.addTransition(5, 'a', 5);
+  fa.addTransition(5, 'b', 5);
+
+  fa::Automaton minimal_fa = fa.createMinimalMoore(fa);
+
+  EXPECT_EQ(minimal_fa.countTransitions(), 8u);
+  EXPECT_EQ(minimal_fa.countStates(), 4u);
+  EXPECT_EQ(minimal_fa.countSymbols(), 2u);
 }
 
 //TEST(Automaton)
