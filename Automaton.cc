@@ -59,7 +59,7 @@ namespace fa {
   }
 
   void Automaton::setFinalSt(std::set<int> _final_st){
-    states = _final_st;
+    final_states = _final_st;
   }
 
   void Automaton::setTr(std::map<std::pair<int, char>, std::set<int>> _tr){
@@ -153,14 +153,17 @@ namespace fa {
   bool Automaton::removeState(int state) {
     assert(&state != NULL);
     if(hasState(state)){
-      states.erase(state);
+      if(states.erase(state) != 1){
+        return false;
+      }
 
       // Remove transitions in which the state is implied
-      for (auto it = tr.begin(); it != tr.end();){
-          if (it->first.first == state || it->second.count(state) != 0)
-              it = tr.erase(it);
-          else
-              ++it;
+      for(auto symbol : getAl()){
+        removeTransition(state, symbol, state);
+        for(auto s : getSt()){
+          removeTransition(s, symbol, state);
+          removeTransition(state, symbol, s);
+        }
       }
 
       // Delete the state from initial and final states if it is in them
@@ -174,7 +177,7 @@ namespace fa {
 
   bool Automaton::hasState(int state) const {
     assert(&state != NULL);
-    if(states.find(state) != states.end()){
+    if(states.count(state) != 0){
       return true;
     }
     return false;
@@ -194,7 +197,7 @@ namespace fa {
 
   bool Automaton::isStateInitial(int state) const{
     assert(&state != NULL);
-    return (initial_states.find(state) != initial_states.end());
+    return (initial_states.count(state) != 0);
   }
 
   void Automaton::setStateFinal(int state) {
@@ -206,7 +209,7 @@ namespace fa {
 
   bool Automaton::isStateFinal(int state) const{
     assert(&state != NULL);
-    return (final_states.find(state) != final_states.end());
+    return (final_states.count(state) != 0);
   }
 
   bool Automaton::addTransition(int from, char alpha, int to) {
@@ -214,16 +217,14 @@ namespace fa {
     assert(&to != NULL);
     assert(&alpha != NULL);
 
-    if(hasTransition(from, alpha, to) ||
+    if(hasTransition(from, alpha, to) || 
     (alpha != fa::Epsilon && !hasSymbol(alpha)) || 
     !hasState(from) || 
     !hasState(to)){
       return false;
     }
 
-    tr[{from, alpha}].insert(to);
-
-    return hasTransition(from, alpha, to);
+    return tr[{from, alpha}].insert(to).second;
   }
 
   bool Automaton::removeTransition(int from, char alpha, int to) {
@@ -235,10 +236,9 @@ namespace fa {
       return false;
     }
     auto key = std::pair(from, alpha);
-    auto find = tr.find(key);
-    if(find != tr.end()){
+    if(tr.count(key) != 0){
       // transition found
-      tr.erase(find);
+      tr.erase(key);
     }
     //  
     return !hasTransition(from, alpha, to);
@@ -248,21 +248,8 @@ namespace fa {
     assert(&from != NULL);
     assert(&to != NULL);
     assert(&alpha != NULL);
-
-    if((alpha != fa::Epsilon && !hasSymbol(alpha)) || 
-    !hasState(from) || 
-    !hasState(to)){
-      return false;
-    }
-
-    for(auto it : getTr()){
-      if(it.first.first == from && 
-      it.first.second == alpha && 
-      it.second.find(to) != it.second.end()){
-        return true;
-      }
-    }
-
+    auto find = tr.find({from, alpha});
+    if(find != tr.end() && find->second.count(to) != 0) return true;
     return false;
   }
 
@@ -274,7 +261,8 @@ namespace fa {
         if(findKey != tr.end()) res += findKey->second.size();
       }
       auto findKey = tr.find(std::make_pair(from, fa::Epsilon)); 
-        if(findKey != tr.end()) res += findKey->second.size();    }
+        if(findKey != tr.end()) res += findKey->second.size();    
+    }
     return res;
   }
 
@@ -324,8 +312,8 @@ namespace fa {
       return false;
     }
 
-    for(auto it = tr.begin(); it != tr.end(); ++it){
-      if(it->second.size() > 1){
+    for(auto t : getTr()){
+      if(t.second.size() > 1){
         return false;
       }
     }
@@ -335,50 +323,34 @@ namespace fa {
 
   bool Automaton::isComplete() const {
     assert(isValid());
-    std::set<int>::const_iterator it_st, it_st_dest;
-    std::set<char>::const_iterator it_al;
-    for(it_st = states.begin(); it_st != states.end(); ++it_st){
-      for(it_al = al.begin(); it_al != al.end(); ++it_al){
-        bool isStateComplete = false;
-        for(it_st_dest = states.begin(); it_st_dest != states.end(); ++it_st_dest){
-          if(hasTransition(*it_st, *it_al, *it_st_dest)){
-            isStateComplete = true;
-            break;
-          }
-        }
-        if(!isStateComplete){
-          return false;
-        }
+    for(auto it_st : getSt()){
+      for(auto it_al : getAl()){
+        if(tr.count({it_st, it_al}) == 0) return false;
       }
     }
     return true;
   }
 
   Automaton Automaton::createComplete(const Automaton& automaton) {
+    fa::Automaton completeAutomaton = automaton;
+    
     if(automaton.isComplete()){
-      return automaton;
+      return completeAutomaton;
     }
 
-    fa::Automaton completeAutomaton = automaton;
+    //if(completeAutomaton.countStates() > 100) return completeAutomaton;
 
     // Dump State creation to complete the automaton
     int dump_state = 0;
     while(completeAutomaton.hasState(dump_state)) ++ dump_state;
     completeAutomaton.addState(dump_state);
 
-    auto _st = completeAutomaton.getSt();
-    auto _al = completeAutomaton.getAl();
-    auto _tr = completeAutomaton.getTr();
-    for(auto it_st = _st.begin(); it_st != _st.end(); it_st++){
-      for(auto it_al = _al.begin(); it_al != _al.end(); it_al++){
-        auto isStateComplete = false;
-        for(auto it_st_dest = _st.begin(); it_st_dest != _st.end(); ++it_st_dest){
-          if(completeAutomaton.hasTransition(*it_st, *it_al, *it_st_dest)){
-            isStateComplete = true;
-            break;
-          }
+    for(auto symbol : completeAutomaton.getAl()){
+      completeAutomaton.addTransition(dump_state, symbol, dump_state);
+      for(auto state : completeAutomaton.getSt()){
+        if(completeAutomaton.tr.count({state, symbol}) == 0){
+          completeAutomaton.addTransition(state, symbol, dump_state);
         }
-        if(!isStateComplete) completeAutomaton.addTransition(*it_st, *it_al, dump_state);
       }
     }
 
@@ -423,10 +395,13 @@ namespace fa {
     assert(isValid());
 
     if(getInitialSt().empty()){
-      std::set<int> x;
-      x.insert(0);
-      setSt(x);
+      for(auto s : getSt()){
+        removeState(s);
+      }
+      addState(0);
       setStateInitial(0);
+      addSymbol('a');
+      return;
     }
 
     std::set<int> visited;
@@ -443,9 +418,9 @@ namespace fa {
   }
 
   void Automaton::removeNonCoAccessibleStates() {
-    this->createMirror(*this);
+    *this = createMirror(*this);
     this->removeNonAccessibleStates();
-    this->createMirror(*this);
+    *this = createMirror(*this);
   }
 
   bool Automaton::DFS(std::set<int>& visited, int s, bool return_on_final) const{
@@ -477,9 +452,11 @@ namespace fa {
 
     for(auto s : initial_states){
       if(isStateFinal(s)){
-        return true;
+        return false;
       }
     }
+
+    if(getInitialSt().size() == 0 || getFinalSt().size() == 0) return true;
 
     for(auto init_st : initial_states){
       auto visited = std::set<int>();
@@ -516,22 +493,31 @@ namespace fa {
     fa::Automaton mirror_automaton;
     mirror_automaton.setAl(automaton.getAl());
     mirror_automaton.setSt(automaton.getSt());
+    mirror_automaton.setInitSt(automaton.getInitialSt());
+    mirror_automaton.setFinalSt(automaton.getFinalSt());
 
-    for(auto it : automaton.getFinalSt()){
-      mirror_automaton.setStateInitial(it);
-      mirror_automaton.removeFinalState(it);
+    auto init = mirror_automaton.getInitialSt();
+    auto final = mirror_automaton.getFinalSt();
+
+    for(auto it : final){
+      if(!mirror_automaton.isStateInitial(it)){
+        mirror_automaton.setStateInitial(it);
+        mirror_automaton.removeFinalState(it);
+      }
     }
 
-    for(auto it : automaton.getInitialSt()){
-      mirror_automaton.setStateFinal(it);
-      mirror_automaton.removeInitialState(it);
+    for(auto it : init){
+      if(!mirror_automaton.isStateFinal(it)){
+        mirror_automaton.setStateFinal(it);
+        mirror_automaton.removeInitialState(it);
+      }
     }
 
-    for(auto it_tr : automaton.getTr()){
-      for(auto it_tr_to : it_tr.second){
-        mirror_automaton.addTransition(it_tr_to, 
-                                       it_tr.first.second,
-                                       it_tr.first.first);
+    for(auto t : automaton.getTr()){
+      for(auto t_to : t.second){
+        mirror_automaton.addTransition(t_to, 
+                                       t.first.second,
+                                       t.first.first);
       }
     }
 
@@ -565,23 +551,22 @@ namespace fa {
     fa::Automaton intersection;
 
     // Variables
-    std::map<std::pair<int, int>, int> visited; // {(lhs_st, rhs_st), intersection_st}
+    std::map<std::pair<int, int>, int> to_process; // {(lhs_st, rhs_st), intersection_st}
     int curr_st = 0; // count the states of the intersection
     
     // First we make the instersection of both alphabets
     auto al = std::set<char>(); 
     for(auto a : lhs.getAl()){
-      al.insert(a);
-    }
-    for(auto a : rhs.getAl()){
-      al.insert(a);
+      if(rhs.hasSymbol(a)){
+        al.insert(a);
+      }
     }
     intersection.setAl(al);
 
     // Then we get every pair of initial states
     for(auto lhs_ptr : lhs.getInitialSt()){
       for(auto rhs_ptr : rhs.getInitialSt()){
-        visited.insert({std::make_pair(lhs_ptr, rhs_ptr), curr_st});
+        to_process.insert({std::make_pair(lhs_ptr, rhs_ptr), curr_st});
         intersection.addState(curr_st);
         intersection.setStateInitial(curr_st);
         ++curr_st;
@@ -589,22 +574,22 @@ namespace fa {
     }
 
     // Visit both automaton and create new states / intersections
-    for(auto visited_curr : visited){
+    for(auto to_process_curr : to_process){
       // Get every pair of states for every symbols in the alphabet 
       for(auto symbol : intersection.getAl()){
         std::set<int> lhs_symbol_state;
         std::set<int> rhs_symbol_state;
         
         for(auto lhs_st_to : lhs.getSt()){
-          // looking for every transitions starting by the current lhs state and the using current symbol 
-          if(lhs.hasTransition(visited_curr.first.first, symbol, lhs_st_to)){
+          // looking for every transitions starting by the current to process lhs state and the using current symbol 
+          if(lhs.hasTransition(to_process_curr.first.first, symbol, lhs_st_to)){
             lhs_symbol_state.insert(lhs_st_to);
           }
         }
 
         for(auto rhs_st_to : rhs.getSt()){
           // looking for every transitions starting by the current rhs state and the using current symbol 
-          if(rhs.hasTransition(visited_curr.first.second, symbol, rhs_st_to)){
+          if(rhs.hasTransition(to_process_curr.first.second, symbol, rhs_st_to)){
             rhs_symbol_state.insert(rhs_st_to);
           }
         }
@@ -613,15 +598,15 @@ namespace fa {
         for(auto lhs_ptr : lhs_symbol_state){
           for(auto rhs_ptr : rhs_symbol_state){
             auto pair = std::make_pair(lhs_ptr, rhs_ptr);
-            auto findState = visited.find(pair);
-            if(findState != visited.end()){
+            auto findState = to_process.find(pair);
+            if(findState != to_process.end()){
               // The pair is already known, we add the transition from the current state
               // to the state of the said pair
-              intersection.addTransition(visited_curr.second, symbol, findState->second);
+              intersection.addTransition(to_process_curr.second, symbol, findState->second);
             }else{
-              visited.insert({std::make_pair(lhs_ptr, rhs_ptr), curr_st});
+              to_process.insert({std::make_pair(lhs_ptr, rhs_ptr), curr_st});
               intersection.addState(curr_st);
-              intersection.addTransition(visited_curr.second, symbol, curr_st);
+              intersection.addTransition(to_process_curr.second, symbol, curr_st);
               ++curr_st;
             }
           }
@@ -629,8 +614,8 @@ namespace fa {
       }
 
       // If both left and right states were final, then the current state is final
-      if(lhs.isStateFinal(visited_curr.first.first) && rhs.isStateFinal(visited_curr.first.second)){
-        intersection.setStateFinal(visited_curr.second);
+      if(lhs.isStateFinal(to_process_curr.first.first) && rhs.isStateFinal(to_process_curr.first.second)){
+        intersection.setStateFinal(to_process_curr.second);
       }
     }
 
@@ -644,7 +629,18 @@ namespace fa {
   Automaton Automaton::createDeterministic(const Automaton& other) {
     assert(other.isValid());
 
-    if(other.isDeterministic()) return other;
+    if(other.isDeterministic()){
+      fa::Automaton copy = other;
+      return other;
+    } 
+
+    if(other.getInitialSt().empty()){
+      fa::Automaton a;
+      a.addState(0);
+      a.setStateInitial(0);
+      a.addSymbol('a');
+      return a;
+    }
 
     fa::Automaton deterministic;
 
@@ -696,10 +692,14 @@ namespace fa {
     assert(other.isValid());
     //
     fa::Automaton _other =  other;
+
     _other.removeNonAccessibleStates();
     _other = createComplete(_other);
     _other = createDeterministic(_other);
     //
+
+    if(_other.countStates() == 1) return _other;
+
     std::vector<int> state_vector;
     for(auto st : _other.getSt()){
       // Build a vector of every states
@@ -723,7 +723,7 @@ namespace fa {
         }
         nX.insert({' ', res});
       }else{ // Count the different states
-        n0 = nX.find(' ')->second;
+        n0 = nX.at(' ');
         //
         std::vector<int> res;
         std::map<std::vector<int>, int> tuple_map;
@@ -733,20 +733,19 @@ namespace fa {
           std::vector<int> tuple;
           tuple.push_back(n0[st]);
           for(auto symbol : al_vector){
-            tuple.push_back(nX.find(symbol)->second[st]);
+            tuple.push_back(nX.at(symbol)[st]);
           }
           //
-          auto findKey = tuple_map.find(tuple);
-          if(findKey == tuple_map.end()){
+          if(tuple_map.count(tuple) == 0){
             tuple_map.insert({tuple, count});
             res.push_back(count);
             ++count;
           }else{
-            res.push_back(findKey->second);
+            res.push_back(tuple_map.at(tuple));
           }
         }
         //
-        nX = std::map<char, std::vector<int>>();
+        nX = std::map<char, std::vector<int>>(); // reset
         nX.insert({' ', res});
       }
       //
@@ -756,9 +755,7 @@ namespace fa {
         for(auto st_from : state_vector){
           for(auto st_to : _other.getSt()){
             if(_other.hasTransition(st_from, symbol, st_to)){
-              auto find = nX.find(' ');
-              if(find == nX.end()) exit(EXIT_FAILURE);
-              symbol_res.push_back(find->second[st_to]);
+              symbol_res.push_back(nX.at(' ')[st_to]);
               // can break here
               break;
             }
